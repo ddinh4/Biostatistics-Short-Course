@@ -1,0 +1,302 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Simple Model Review},
+  pdfauthor={Dina Dinh},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Simple Model Review}
+\author{Dina Dinh}
+\date{August 20, 2026}
+
+\begin{document}
+\maketitle
+
+\section{Comparing Model 2 and Model
+3}\label{comparing-model-2-and-model-3}
+
+\subsection{Where Model 2 and Model 3 Agree in
+Contrasts}\label{where-model-2-and-model-3-agree-in-contrasts}
+
+In this scenario, we see that there's a big difference at final between
+the two groups, BUT the within-group change is almost zero for both
+groups.
+
+\subsection{Where Model 2 and Model 3 Disgree in
+Contrasts}\label{where-model-2-and-model-3-disgree-in-contrasts}
+
+In this scenario, we see that at final, there's not much change between
+the two groups BUT the within-group change for Group B is large.
+
+Assumptions:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Independent subjects across groups
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  One person in group A should not be correlated with a person in group
+  B.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Change scores are approximately normally distributed within each group
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  This does not mean the original outcome at time1 or time2 must each be
+  normal. It is the change score that matters most.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  Equal variances only if you use the pooled t-test
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  If you use the default Welch t-test in R, equal variances are not
+  required.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\tightlist
+\item
+  Outcome is continuous
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  The change score should be roughly quantitative/continuous.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{4}
+\tightlist
+\item
+  No major outliers in the change scores
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Extreme outliers can distort the mean and the t-test.
+\end{itemize}
+
+Assumptions:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Correct mean structure
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  The model for the mean should be appropriate:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    group effect
+  \item
+    time effect
+  \item
+    group × time interaction
+  \end{itemize}
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Independence between subjects
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Different subjects should be independent.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  Correlation within subjects is handled correctly enough
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  The mixed model accounts for repeated observations within subject
+  through the random effect or covariance structure.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\tightlist
+\item
+  Residuals are approximately normal
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  More specifically, the residuals and random effects are often assumed
+  approximately normal for standard inference in linear mixed models.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{4}
+\tightlist
+\item
+  Homoscedasticity of residuals
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Residual variance should be reasonably similar across fitted
+  values/groups/times unless you model different variances.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{5}
+\tightlist
+\item
+  Outcome is continuous
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  For standard linear mixed models.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{6}
+\tightlist
+\item
+  No extreme influential outliers
+\end{enumerate}
+
+\section{ANCOVA}\label{ancova}
+
+At the final timepoint, do treatment and control differ after adjusting
+for baseline difference? -\textgreater{} model2 answers this
+
+What is the relationship among the models 2-4? What do they mean and
+what are they assuming? For models 2-4, what is the null hypothesis for
+the group assuming? Which models 1-4 should we use and in what cases?
+
+model1 : answers if there the a difference between the two groups at
+final - null hypothesis: the two group's means are equal to each other
+at final - use when only care about final difference between two groups
+
+model2: answers if the two groups differ after adjusting for baseline
+difference - null hypothesis: the two group's means are equal to each
+other at final after adjusting for baseline - use when want to compare
+raw mean changes
+
+model3: answers if the raw change from baseline to final differs between
+the two groups - use when want to present changes scores
+
+model4: is the same as model2 except the coefficeient for Baseline is 1
+less in model4 - change = \(\beta_0\) + \(\beta_1\)Baseline +
+\(\beta_2\)Group - Final - Baseline = \(\beta_0\) + \(\beta_1\)Baseline
++ \(\beta_2\)Group - Final = \(\beta_0\) + \(\beta_1\)Baseline +
+Baseline + \(\beta_2\)Group - Final = \(\beta_0\) + (\(\beta_1\) +
+1)*Baseline + \(\beta_2\)Group - We can see the only difference in
+model2 and model4 mathematically is the +1 - use when baseline
+differences between the two groups and want to have outcome variable as
+changes scores
+
+\end{document}

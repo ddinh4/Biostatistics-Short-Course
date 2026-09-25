@@ -1,0 +1,730 @@
+---
+title: "Correlation and Slope Comparison"
+author: "Dina Dinh"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+```
+
+```{r}
+library(easypackages)
+libraries("dplyr", "tidyr", "ggplot2", "ggeffects")
+```
+
+# Comparing P-Values
+
+```{r}
+set.seed(1)
+N = 100
+
+# 1.
+d1 = tibble(
+  x = runif(N, 0, 1),
+  age = rnorm(N, 25, 1),
+  weight = rnorm(N, 150, 10),
+  y = sin(0.5 * pi * x) + rnorm(N, 0, 3)
+)
+
+# 2.
+d2 = tibble(
+  x = runif(N, -2, 2),
+  age = rnorm(N, 25, 1),
+  weight = rnorm(N, 150, 10),
+  y = 1.2 * x + rnorm(N, 0, 0.5)
+)
+
+# 3.
+d3 = tibble(
+  x = c(rnorm(N - 2, 0, 1), 6, 7),
+  age = rnorm(N, 25, 1),
+  weight = rnorm(N, 150, 10),
+  y = c(rnorm(N - 2, 0, 1), 10, 14)
+)
+
+# 4.
+d4 = tibble(
+  x = rnorm(N),
+  age = rnorm(N, 25, 1),
+  weight = rnorm(N, 150, 10),
+  y = rnorm(N)
+)
+```
+
+## Case 1
+
+```{r}
+cor_test = cor.test(d1$x, d1$y, method = "pearson")
+    r_val = round(cor_test$estimate, 3)
+    p_val = signif(cor_test$p.value, 3)
+    #p_val = ifelse(p_val < 0.001, "p-val < 0.001", paste0("p-val = ", signif(p_val, 3)))
+    
+    # Build label
+    label = paste0("r = ", r_val, ", p-val = ", p_val)
+
+fit = lm(y ~ x, data = d1)
+        
+cov_fit = lm(y ~ x + age + weight, data = d1)
+
+newdat = d1 %>%
+  tidyr::expand(
+    x = seq(min(x), max(x), length.out = 100)
+  ) %>%
+  mutate(
+    age = mean(d1$age, na.rm = TRUE),
+    weight = mean(d1$weight, na.rm = TRUE)
+  ) %>%
+  mutate(
+    y_hat = predict(cov_fit, newdata = .)
+  )
+
+
+ggplot(d1, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_line(data = newdat, aes(x, y_hat), color="red", size=.2) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+summary(fit)$coef
+summary(cov_fit)$coef
+```
+
+
+## Case 2
+
+```{r}
+cor_test = cor.test(d2$x, d2$y, method = "pearson")
+r_val = round(cor_test$estimate, 3)
+p_val = signif(cor_test$p.value, 3)
+#p_val = ifelse(p_val < 0.001, "p-val < 0.001", paste0("p-val = ", signif(p_val, 3)))
+
+# Build label
+label = paste0("r = ", r_val, ", p-val = ", p_val)
+fit = lm(y ~ x, data = d2)
+
+
+cov_fit = lm(y ~ x + age + weight, data = d2)
+
+newdat = d2 %>%
+  tidyr::expand(
+    x = seq(min(x), max(x), length.out = 100)
+  ) %>%
+  mutate(
+    age = mean(d2$age, na.rm = TRUE),
+    weight = mean(d2$weight, na.rm = TRUE)
+  ) %>%
+  mutate(
+    y_hat = predict(cov_fit, newdata = .)
+  )
+
+
+ggplot(d2, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_line(data = newdat, aes(x, y_hat), color="red", size=.2) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+summary(fit)$coef
+summary(cov_fit)$coef
+```
+
+## Case 3
+
+```{r}
+cor_test = cor.test(d3$x, d3$y, method = "pearson")
+r_val = round(cor_test$estimate, 3)
+p_val = signif(cor_test$p.value, 3)
+#p_val = ifelse(p_val < 0.001, "p-val < 0.001", paste0("p-val = ", signif(p_val, 3)))
+
+# Build label
+label = paste0("r = ", r_val, ", p-val = ", p_val)
+fit = lm(y ~ x, data = d3)
+
+cov_fit = lm(y ~ x + age + weight, data = d3)
+
+newdat = d3 %>%
+  tidyr::expand(
+    x = seq(min(x), max(x), length.out = 100)
+  ) %>%
+  mutate(
+    age = mean(d3$age, na.rm = TRUE),
+    weight = mean(d3$weight, na.rm = TRUE)
+  ) %>%
+  mutate(
+    y_hat = predict(cov_fit, newdata = .)
+  )
+
+
+ggplot(d3, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_line(data = newdat, aes(x, y_hat), color="red", size=.2) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+summary(fit)$coef
+summary(cov_fit)$coef
+```
+
+
+## Case 4
+
+```{r}
+cor_test = cor.test(d4$x, d4$y, method = "pearson")
+r_val = round(cor_test$estimate, 3)
+p_val = signif(cor_test$p.value, 3)
+#p_val = ifelse(p_val < 0.001, "p-val < 0.001", paste0("p-val = ", signif(p_val, 3)))
+
+# Build label
+label = paste0("r = ", r_val, ", p-val = ", p_val)
+fit = lm(y ~ x, data = d4)
+
+cov_fit = lm(y ~ x + age + weight, data = d4)
+
+newdat = d4 %>%
+  tidyr::expand(
+    x = seq(min(x), max(x), length.out = 100)
+  ) %>%
+  mutate(
+    age = mean(d4$age, na.rm = TRUE),
+    weight = mean(d4$weight, na.rm = TRUE)
+  ) %>%
+  mutate(
+    y_hat = predict(cov_fit, newdata = .)
+  )
+
+
+ggplot(d4, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_line(data = newdat, aes(x, y_hat), color="red", size=.2) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+summary(fit)$coef
+summary(cov_fit)$coef
+```
+
+
+# Comparing Correlation and Slope Values
+
+```{r}
+set.seed(1)
+
+N = 100
+x = scale(rnorm(N), center = TRUE, scale = TRUE)  # centered & scaled for stability
+b_target = 1.5                                     # target slope for A1/A2
+
+# Build a noise vector orthogonal to x so OLS slope is EXACTLY b_target
+z = rnorm(N)
+u = as.numeric(z - x * (sum(x * z) / sum(x^2)))   # u ⟂ x  (x'u = 0)
+# sanity check: crossprod(x, u) ~ 0
+
+# ------- Part A: SAME slope, DIFFERENT correlations -------
+# y = b*x + k*u  => OLS slope = b for ANY k because x'u = 0
+k1 = 0.8
+k2 = 4.0
+y_A1 = b_target * x + k1 * u
+y_A2 = b_target * x + k2 * u
+
+A1 = data.frame(x = as.numeric(x), y = as.numeric(y_A1),
+  age = rnorm(N, 25, 1),
+  weight = rnorm(N, 150, 10))
+A2 = data.frame(x = as.numeric(x), y = as.numeric(y_A2),
+  age = rnorm(N, 25, 1),
+  weight = rnorm(N, 150, 10))
+
+# ------- Part B: SAME correlation, DIFFERENT slopes -------
+# Scaling y by a positive constant changes slope but NOT correlation
+# Start from a clean linear dataset
+y_base = 0.9 * x + rnorm(N, 0, 0.6)
+B1 = data.frame(x = as.numeric(x), y = as.numeric(y_base),
+  age = rnorm(N, 25, 1),
+  weight = rnorm(N, 150, 10))          # slope ~ 0.9
+B2 = data.frame(x = as.numeric(x), y = as.numeric(3 * y_base),
+  age = rnorm(N, 25, 1),
+  weight = rnorm(N, 150, 10))      # slope ~ 2.7
+# cor(B1$x, B1$y) == cor(B2$x, B2$y) in the sample (up to rounding)
+
+```
+
+## Same Slopes, Different Correlations
+
+```{r}
+cor_test = cor.test(A1$x, A1$y, method = "pearson")
+r_val = round(cor_test$estimate, 3)
+p_val = signif(cor_test$p.value, 3)
+
+# Build label
+label = paste0("r = ", r_val, ", p-val = ", p_val)
+
+cov_fit = lm(y ~ x + age + weight, data = A1)
+newdat = A1 %>%
+  tidyr::expand(
+    x = seq(min(x), max(x), length.out = 100)
+  ) %>%
+  mutate(
+    age = mean(A1$age, na.rm = TRUE),
+    weight = mean(A1$weight, na.rm = TRUE)
+  ) %>%
+  mutate(
+    y_hat = predict(cov_fit, newdata = .)
+  )
+
+
+ggplot(A1, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_line(data = newdat, aes(x, y_hat), color="red", size=.2) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+cor_test = cor.test(A2$x, A2$y, method = "pearson")
+r_val = round(cor_test$estimate, 3)
+p_val = signif(cor_test$p.value, 3)
+
+# Build label
+label = paste0("r = ", r_val, ", p-val = ", p_val)
+
+cov_fit = lm(y ~ x + age + weight, data = A2)
+newdat = A2 %>%
+  tidyr::expand(
+    x = seq(min(x), max(x), length.out = 100)
+  ) %>%
+  mutate(
+    age = mean(A2$age, na.rm = TRUE),
+    weight = mean(A2$weight, na.rm = TRUE)
+  ) %>%
+  mutate(
+    y_hat = predict(cov_fit, newdata = .)
+  )
+
+
+ggplot(A2, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_line(data = newdat, aes(x, y_hat), color="red", size=.2) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  theme_minimal()
+```
+
+## Same Correlations, Different Slopes
+
+```{r}
+cor_test = cor.test(B1$x, B1$y, method = "pearson")
+r_val = round(cor_test$estimate, 3)
+p_val = signif(cor_test$p.value, 3)
+
+# Build label
+label = paste0("r = ", r_val, ", p-val = ", p_val)
+
+cov_fit = lm(y ~ x + age + weight, data = B1)
+newdat = B1 %>%
+  tidyr::expand(
+    x = seq(min(x), max(x), length.out = 100)
+  ) %>%
+  mutate(
+    age = mean(B1$age, na.rm = TRUE),
+    weight = mean(B1$weight, na.rm = TRUE)
+  ) %>%
+  mutate(
+    y_hat = predict(cov_fit, newdata = .)
+  )
+
+
+ggplot(B1, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_line(data = newdat, aes(x, y_hat), color="red", size=.2) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  theme_minimal()
+```
+
+
+```{r}
+cor_test = cor.test(B2$x, B2$y, method = "pearson")
+r_val = round(cor_test$estimate, 3)
+p_val = signif(cor_test$p.value, 3)
+
+# Build label
+label = paste0("r = ", r_val, ", p-val = ", p_val)
+
+cov_fit = lm(y ~ x + age + weight, data = B2)
+newdat = B2 %>%
+  tidyr::expand(
+    x = seq(min(x), max(x), length.out = 100)
+  ) %>%
+  mutate(
+    age = mean(B2$age, na.rm = TRUE),
+    weight = mean(B2$weight, na.rm = TRUE)
+  ) %>%
+  mutate(
+    y_hat = predict(cov_fit, newdata = .)
+  )
+
+
+ggplot(B2, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_line(data = newdat, aes(x, y_hat), color="red", size=.2) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  theme_minimal()
+```
+
+## Result
+
+We can see that the p-val for the correlation and slopes are the same in each case; however the values of the slopes and correlations themselves can change while the other stays constant.
+
+
+# Replicating SAS Code
+
+```{r}
+N = 100000
+sas_d1 = tibble(
+  a = rnorm(N, 0, 10) + rnorm(N, 0, 5),
+  set.seed(124),
+  #z = 14*rnorm(N, 0, 1) + 5,
+  set.seed(123),
+  x = rnorm(N, 1, 2), # mean = 1, sd = 2
+  #y = 1.2*x + z +  rnorm(N, 0, 1),
+  y1 = 1.2*x + rnorm (N, 0, 1), # mean = 1.2, sd = 2.6
+  y2 = y1 + x, # mean = 2.2, sd != 3.28, bc x and y1 are not independent so have to add cov(x,y1) from the sum of var(x) and var(y1).
+  y2a = 2.2*x + rnorm(N, 0, 1), # these 2 terms are independent
+  e = 2*rnorm(N, 0, 1) + 1
+  # var(a+b) = var(a) + var(b) + 2cov(a,b)
+)
+
+library(psych)
+
+summary_d1 = describe(sas_d1) 
+
+summary_d1$vars = rownames(summary_d1)
+rownames(summary_d1) = NULL
+
+summary_d1 = summary_d1 %>%
+  arrange(vars) %>%
+  dplyr::select(vars, n, mean, sd, min, max)
+
+```
+
+
+# Variance and Covariance
+
+```{r}
+N = 100000
+sas_d1 = tibble(
+  a = rnorm(N, 0, 10) + rnorm(N, 0, 5),
+  set.seed(124),
+  #z = 14*rnorm(N, 0, 1) + 5,
+  set.seed(123),
+  x = rnorm(N, 1, 2), # mean = 1, sd = 2
+  #y = 1.2*x + z +  rnorm(N, 0, 1),
+  y1 = 1.2*x + rnorm (N, 0, 1), # mean = 1.2, sd = 2.6
+  y2 = y1 + x, # cov between y1 and x is not 0 (cov=0 if 2 variables are independent)
+  y2a = 2.2*x + rnorm(N, 0, 1), # these 2 terms are independent
+  e = 2*rnorm(N, 0, 1) + 1
+  # var(a+b) = var(a) + var(b) + 2cov(a,b)
+)
+
+set.seed(123)
+y2a_1 = 2.2*sas_d1$x # rnorm(N, 2.2, 4.4) 
+# ^ however, this code would not give me cov = 0 for some reason
+y2a_1 = 2.2*rnorm(N, 1, 2)
+y2a_2 = rnorm(N, 0, 1)
+
+cov(y2a_1, y2a_2)
+cor(y2a_1, y2a_2)
+
+#cov(sas_d1$x, rnorm(N, 1, 2))
+
+cov(sas_d1$y1, sas_d1$x)
+```
+
+## Small Covariance
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 1, 5)
+b =  rnorm(N, 1, 5)
+plot(a,b)
+paste0("var(a): ", var(a))
+paste0("var(b): ", var(b))
+
+paste0("var(a+b): ", var(a+b))
+paste0("var(a) + var(b): ", var(a) + var(b))
+
+
+paste0("cov(a, b): ", cov(a, b))
+paste0("cor(a, b): ", cor(a, b))
+
+paste0("var(a) + var(b) + 2*cov(a, b): ", var(a) + var(b) + 2*cov(a, b))
+```
+
+a = rnorm(N, 1, 5)
+b =  rnorm(N, 1, 5) 
+cov(a, b) = 0 because even though they are the same distribution there's no relationship such as when a gets large, b also gets large.
+
+
+## Large Covariance
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 1, 5)
+b =  a + rnorm(N, 1, 5) 
+plot(a,b)
+
+paste0("mean(a) + mean(b): ", mean(a) + mean(b)) 
+paste0("mean(a+b): ", mean(a+b))
+
+large_cov = data.frame(
+  Type = "Large Cov",
+  var_a = var(a),
+  var_b = var(b),
+  var_a_var_b = var(a) + var(b),
+  var_a_b = var(a+b),
+  cov_a_b = cov(a, b),
+  cor_a_b = cor(a, b)
+)
+```
+
+Also, covariance does not change if the mean changes.
+Remember correlation goes from -1 to 1 so 0.7 correlation is kinda strong relationship.
+
+### Increase Var(a)
+
+What happens when we increase variance of a? Let's increase the var(a) from 25 to 225.
+
+- The covariance between a and b increases and since the covariance increases, the var(a+b) also increases.
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 1, 15)
+b =  a + rnorm(N, 1, 5) 
+plot(a,b)
+
+inc_cov = data.frame(
+  Type = "Increased Var(a)",
+  var_a = var(a),
+  var_b = var(b),
+  var_a_var_b = var(a) + var(b),
+  var_a_b = var(a+b),
+  cov_a_b = cov(a, b),
+  cor_a_b = cor(a, b)
+)
+
+```
+
+### Decrease Var(a)
+
+What happens when we decrease variance of a? Let's increase the var(a) from 25 to 1.
+
+- The covariance between a and b increases and since the covariance increases, the var(a+b) also increases.
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 1, 1)
+b =  a + rnorm(N, 1, 5) 
+plot(a,b)
+
+dec_cov = data.frame(
+  Type = "Decreased Var(a)",
+  var_a = var(a),
+  var_b = var(b),
+  var_a_var_b = var(a) + var(b),
+  var_a_b = var(a+b),
+  cov_a_b = cov(a, b),
+  cor_a_b = cor(a, b)
+)
+```
+
+```{r}
+results = rbind(large_cov, inc_cov, dec_cov)
+```
+
+## Negative Covariance
+
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 1, 5)
+b =  - a - rnorm(N, 1, 5) 
+plot(a,b)
+
+neg_cov = data.frame(
+  Type = "Negative Cov",
+  mean_a = mean(a),
+  mean_b = mean(b),
+  var_a = var(a),
+  var_b = var(b),
+  var_a_var_b = var(a) + var(b),
+  var_a_b = var(a+b),
+  cov_a_b = cov(a, b),
+  cor_a_b = cor(a, b)
+)
+```
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 0, 1)
+b =  rnorm(N, 0, 1) 
+c = a + b
+d = a - b
+e = c - d
+
+#hist(c, breaks = 20, xlim = c(-4, 4))
+#hist(d, breaks = 20, xlim = c(-4, 4))
+
+cat("cov(c, a) = ", cov(c, a), "\n") 
+cat("cov(d, a) = ", cov(d, a), "\n") 
+
+cat("cov(c, b) = ", cov(c, b), "\n") 
+cat("cov(d, b) = ", cov(d, b), "\n")
+
+cat("cov(c, d) = ", cov(c, d), "\n") # why covariance = 0?
+
+cat("var(c) = ", var(c), "\n") # var = 2?
+cat("var(d) = ", var(d), "\n")
+cat("var(e) = ", var(e), "\n") # even though the covariance of (c, d) is 0, what's going on? 
+
+# investigate c and d and e more!!
+# overall goal: why do we have covariates in the model, like age, etc.? Why when we put in age, it changes our estimates in the model? What is age doing to the model?
+```
+
+
+### Increase Var(a)
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 1, 15)
+b =  - a - rnorm(N, 1, 5) 
+plot(a,b)
+
+inc_n_cov = data.frame(
+  Type = "Increased Var(a)-Negative Cov",
+  var_a = var(a),
+  var_b = var(b),
+  var_a_var_b = var(a) + var(b),
+  var_a_b = var(a+b),
+  cov_a_b = cov(a, b),
+  cor_a_b = cor(a, b)
+)
+
+```
+
+### Decrease Var(a)
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 1, 1)
+b =  - a - rnorm(N, 1, 5)
+plot(a,b)
+
+dec_n_cov = data.frame(
+  Type = "Decreased Var(a)-Negative Cov",
+  var_a = var(a),
+  var_b = var(b),
+  var_a_var_b = var(a) + var(b),
+  var_a_b = var(a+b),
+  cov_a_b = cov(a, b),
+  cor_a_b = cor(a, b)
+)
+```
+
+```{r}
+results2 = rbind(neg_cov, inc_n_cov, dec_n_cov)
+```
+
+```{r}
+N=10000
+set.seed(123)
+a = rnorm(N, 0, 1)
+b =  rnorm(N, 0, 1)
+c = a + b
+d = a - b
+e = c - d
+f = a + 2*b
+g = -1*b
+h = 2*b
+
+# z = 2*a + 3*b + c - 4*e + trt => goal is being able to interpret this equation.
+
+```
+
+Dot Product of c & d coefficients:
+
+- (1, 1) . (1, -1) = 1 + -1 = 0
+
+Dot Product of c & e coefficients:
+
+- (1, 1) . (0, 2) = 0 + 2 = 2
+
+Dot Product of g & h coefficients:
+
+- (0, -1) . (0, 2) = 0 + -2 = -2
+

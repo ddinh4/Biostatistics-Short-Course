@@ -1,0 +1,598 @@
+---
+title: "Simple Model Review"
+author: "Dina Dinh"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+```
+
+```{r}
+library(easypackages)
+libraries("dplyr", "tidyr", "ggplot2", "ggeffects", "mmrm", "emmeans", "knitr", "kableExtra")
+```
+
+
+# Comparing Model 2 and Model 3
+
+**The baselines are unequal in each of these scenarios.**
+
+```{r}
+set.seed(1)
+
+n_timepoint = 50
+n_group = n_timepoint*2
+
+# In this dataset, model2 and model3 do agree
+
+df1_wide_agree <- data.frame(
+  id = rep(1:n_timepoint, 2),
+  group = rep(c("A", "B"), each = n_timepoint)
+) %>%
+  mutate(
+    # Group A baseline mean = 165
+    # Group B baseline mean = 150
+    Baseline = ifelse(
+      group == "A",
+      (rnorm(n_timepoint, mean = 0, sd = 1)*15)+15+150,
+      (rnorm(n_timepoint, mean = 0, sd = 1)*15)+150
+    ),
+    
+    # Final = that person's baseline + random change
+    Final = Baseline + rnorm(n(), mean = 0, sd = 1)*5,
+    
+    change = Final - Baseline
+  )
+
+
+df1_agree <- df1_wide_agree %>%
+  pivot_longer(
+    cols = c(Baseline, Final),
+    names_to = "timepoint",
+    values_to = "weight"
+  )
+```
+
+```{r}
+set.seed(1)
+
+n_timepoint = 50
+n_group = n_timepoint*2
+
+# In this dataset, model2 and model3 do NOT agree
+
+df1_wide_disagree <- data.frame(
+  id = rep(1:n_timepoint, 2),
+  group = rep(c("A", "B"), each = n_timepoint)
+) %>%
+  mutate(
+    # Group A baseline mean = 165
+    # Group B baseline mean = 150
+    Baseline = ifelse(
+      group == "A",
+      rnorm(n_timepoint, mean = 70, sd = 6),
+      rnorm(n_timepoint, mean = 70, sd = 6)
+    ),
+    
+    # Final = that person's baseline + random change
+    Final = ifelse(
+      group == "A",
+      rnorm(n(), mean = 85, sd = 6),
+      rnorm(n_timepoint, mean = 72, sd = 6)
+    ),
+    
+    change = Final - Baseline
+  )
+
+
+df1_disagree <- df1_wide_disagree %>%
+  pivot_longer(
+    cols = c(Baseline, Final),
+    names_to = "timepoint",
+    values_to = "weight"
+  )
+```
+
+## Where Model 2 and Model 3 Agree in Contrasts
+
+In this scenario, we see that there's a big difference at final between the two groups, BUT the within-group change is almost zero for both groups.
+
+- Means at final are different, but change scores are equal.
+
+```{r}
+model1_agree = lm(Final ~ group, data = df1_wide_agree) 
+model2_agree = lm(Final ~ Baseline + group, data = df1_wide_agree) # "group" hypothesis is same as model4 in estimate table.
+model3_agree = lm(change ~ group, data = df1_wide_agree) 
+model4_agree = lm(change ~ Baseline + group, data = df1_wide_agree) 
+
+lsmeans1_agree = lsmeans(model1_agree, ~ group, adjust = "none")
+lsmeans1_summary_agree = summary(lsmeans1_agree, infer = c(TRUE, TRUE), adjust = "none")
+contrast_1_agree = as.data.frame(contrast(lsmeans1_agree, method = "pairwise", infer = c(TRUE, TRUE)))
+lsmeans2_agree = lsmeans(model2_agree, ~ group, adjust = "none")
+lsmeans2_summary_agree = summary(lsmeans2_agree, infer = c(TRUE, TRUE), adjust = "none")
+contrast_2_agree = as.data.frame(contrast(lsmeans2_agree, method = "pairwise", infer = c(TRUE, TRUE)))
+lsmeans3_agree = lsmeans(model3_agree, ~ group, adjust = "none")
+lsmeans3_summary_agree = summary(lsmeans3_agree, infer = c(TRUE, TRUE), adjust = "none")
+contrast_3_agree = as.data.frame(contrast(lsmeans3_agree, method = "pairwise", infer = c(TRUE, TRUE)))
+lsmeans4_agree = lsmeans(model4_agree, ~ group, adjust = "none")
+lsmeans4_summary_agree = summary(lsmeans4_agree, infer = c(TRUE, TRUE), adjust = "none")
+contrast_4_agree = as.data.frame(contrast(lsmeans4_agree, method = "pairwise", infer = c(TRUE, TRUE)))
+```
+
+```{r}
+# Linear Mixed Model
+df2_agree = df1_agree %>%
+  group_by(group, timepoint) %>%
+  mutate(id = row_number()) %>%
+  ungroup() %>%
+  mutate(group = as.factor(group),
+         timepoint = as.factor(timepoint),
+         id = ifelse(group == "B", id*100, id),
+         id = as.character(id))
+
+library(mmrm)
+lmm_model1_agree = mmrm(weight ~ group * timepoint + us(timepoint | id), data = df2_agree)
+
+lmm_lsmeans1_agree = lsmeans(lmm_model1_agree, pairwise ~ group * timepoint, adjust = "none")
+
+contrast1_agree <- list(
+"Diff of Diff" =
+c(1, -1, -1, 1)
+)
+
+contrast_df1_agree = as.data.frame(lmm_lsmeans1_agree$contrasts)
+contrast_df1_agree = contrast_df1_agree %>%
+filter(contrast %in% c("A Baseline - B Baseline",
+                       "A Baseline - A Final",
+                       "B Baseline - B Final"))
+
+contrast1.1_agree <- contrast(lmm_lsmeans1_agree, method = contrast1_agree, adjust = "none")
+contrast_df1.1_agree = as.data.frame(contrast1.1_agree)
+contrast_df1_agree = rbind(contrast_df1_agree, contrast_df1.1_agree)
+```
+
+```{r}
+contrast_1_agree$model_type = "Model 1"
+contrast_2_agree$model_type = "Model 2"
+contrast_3_agree$model_type = "Model 3"
+contrast_4_agree$model_type = "Model 4"
+contrast_df1_agree$model_type = "LMM"
+
+summary_contrast_agree = rbind(contrast_1_agree, contrast_2_agree, contrast_3_agree, contrast_4_agree) %>%
+  dplyr::select(-lower.CL, -upper.CL)
+
+summary_contrast_agree = rbind(contrast_df1_agree, summary_contrast_agree)
+```
+
+```{r}
+p_col <- "p.value"
+
+summary_contrast_agree %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 4)),
+    across(
+      all_of(p_col),
+      ~ case_when(
+        .x < 0.001 ~ cell_spec("<0.001", bold = TRUE),
+        .x < 0.05  ~ cell_spec(as.character(.x), bold = TRUE),
+        TRUE       ~ as.character(.x)
+      )
+    )
+  ) %>%
+  kable(
+    format = "html",
+    escape = FALSE,
+    caption = "Type III Analysis of Variance Table with Satterthwaite's method"
+  ) %>%
+  kable_styling(
+    full_width = FALSE,
+    bootstrap_options = c("striped", "hover", "condensed")
+  ) %>%
+  kableExtra::kable_styling() %>%
+  kableExtra::footnote(
+    general = "Table For Model 2 and Model 3 Agree"
+  )
+```
+
+## Where Model 2 and Model 3 Disgree in Contrasts
+
+In this scenario, we see that at final, there's not much change between the two groups BUT the within-group change for Group B is large.
+
+- Means at final are same, but change scores are different.
+
+```{r}
+model1_disagree = lm(Final ~ group, data = df1_wide_disagree) 
+model2_disagree = lm(Final ~ Baseline + group, data = df1_wide_disagree) # "group" hypothesis is same as model4 in estimate table.
+model3_disagree = lm(change ~ group, data = df1_wide_disagree) 
+model4_disagree = lm(change ~ Baseline + group, data = df1_wide_disagree) 
+
+lsmeans1_disagree = lsmeans(model1_disagree, ~ group, adjust = "none")
+lsmeans1_summary_disagree = summary(lsmeans1_disagree, infer = c(TRUE, TRUE), adjust = "none")
+contrast_1_disagree = as.data.frame(contrast(lsmeans1_disagree, method = "pairwise", infer = c(TRUE, TRUE)))
+lsmeans2_disagree = lsmeans(model2_disagree, ~ group, adjust = "none")
+lsmeans2_summary_disagree = summary(lsmeans2_disagree, infer = c(TRUE, TRUE), adjust = "none")
+contrast_2_disagree = as.data.frame(contrast(lsmeans2_disagree, method = "pairwise", infer = c(TRUE, TRUE)))
+lsmeans3_disagree = lsmeans(model3_disagree, ~ group, adjust = "none")
+lsmeans3_summary_disagree = summary(lsmeans3_disagree, infer = c(TRUE, TRUE), adjust = "none")
+contrast_3_disagree = as.data.frame(contrast(lsmeans3_disagree, method = "pairwise", infer = c(TRUE, TRUE)))
+lsmeans4_disagree = lsmeans(model4_disagree, ~ group, adjust = "none")
+lsmeans4_summary_disagree = summary(lsmeans4_disagree, infer = c(TRUE, TRUE), adjust = "none")
+contrast_4_disagree = as.data.frame(contrast(lsmeans4_disagree, method = "pairwise", infer = c(TRUE, TRUE)))
+```
+
+```{r, eval = F}
+summary(model2_disagree)
+summary(model3_disagree)
+summary(model4_disagree)
+
+mean(df1_disagree$weight[df1_disagree$timepoint=="Baseline" & df1_disagree$group == "A"])
+mean(df1_disagree$weight[df1_disagree$timepoint=="Final" & df1_disagree$group == "A"])
+mean(df1_disagree$weight[df1_disagree$timepoint=="Baseline" & df1_disagree$group == "B"])
+
+mean(df1_disagree$weight[df1_disagree$timepoint=="Final" & df1_disagree$group == "B"])
+```
+
+```{r}
+cor(df1_disagree$weight[df1_disagree$timepoint=="Baseline" & df1_disagree$group == "A"], df1_disagree$weight[df1_disagree$timepoint=="Final" & df1_disagree$group == "A"])
+
+cor(df1_disagree$weight[df1_disagree$timepoint=="Baseline" & df1_disagree$group == "B"], df1_disagree$weight[df1_disagree$timepoint=="Final" & df1_disagree$group == "B"])
+```
+
+
+```{r}
+# Linear Mixed Model
+df2_disagree = df1_disagree %>%
+  group_by(group, timepoint) %>%
+  mutate(id = row_number()) %>%
+  ungroup() %>%
+  mutate(group = as.factor(group),
+         timepoint = as.factor(timepoint),
+         id = ifelse(group == "B", id*100, id),
+         id = as.character(id)) 
+
+df2_disagree_a = df2_disagree %>%
+  mutate(id = as.numeric(id)) %>%
+  filter(group == "A" & id <= 25)
+
+df2_disagree_b = df2_disagree %>%
+  mutate(id = as.numeric(id)) %>%
+  filter(group == "B")
+
+df2_disagree = rbind(df2_disagree_a, df2_disagree_b) %>%
+  mutate(id = as.factor(id))
+
+library(mmrm)
+lmm_model1_disagree = mmrm(weight ~ group * timepoint + us(timepoint | id), data = df2_disagree)
+
+lmm_lsmeans1_disagree = lsmeans(lmm_model1_disagree, pairwise ~ group * timepoint, adjust = "none")
+
+contrast1_disagree <- list(
+  "Diff of Diff" =
+    c(1, -1, -1, 1)
+)
+contrast2_disagree <- list(
+  "Test Contrast" =
+    c(-0.5, 0.5, 1, -1)
+)
+
+contrast_df1_disagree = as.data.frame(lmm_lsmeans1_disagree$contrasts)
+contrast_df1_disagree = contrast_df1_disagree %>%
+  filter(contrast %in% c("A Baseline - B Baseline",
+                         "A Baseline - A Final",
+                         "B Baseline - B Final",
+                         "A Final - B Final"))
+
+contrast1.1_disagree <- contrast(lmm_lsmeans1_disagree, method = contrast1_disagree, adjust = "none")
+contrast1.2_disagree <- contrast(lmm_lsmeans1_disagree, method = contrast2_disagree, adjust = "none")
+
+contrast_df1.1_disagree = as.data.frame(contrast1.1_disagree)
+contrast_df1.2_disagree = as.data.frame(contrast1.2_disagree)
+
+contrast_df1_disagree = rbind(contrast_df1_disagree, contrast_df1.1_disagree, contrast_df1.2_disagree)
+```
+
+```{r}
+contrast_1_disagree$model_type = "Model 1"
+contrast_2_disagree$model_type = "Model 2"
+contrast_3_disagree$model_type = "Model 3"
+contrast_4_disagree$model_type = "Model 4"
+contrast_df1_disagree$model_type = "LMM"
+
+summary_contrast_disagree = rbind(contrast_1_disagree, contrast_2_disagree, contrast_3_disagree, contrast_4_disagree) %>%
+  dplyr::select(-lower.CL, -upper.CL)
+
+summary_contrast_disagree = rbind(contrast_df1_disagree, summary_contrast_disagree)
+```
+
+```{r}
+p_col <- "p.value"
+
+summary_contrast_disagree %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 4)),
+    across(
+      all_of(p_col),
+      ~ case_when(
+        .x < 0.001 ~ cell_spec("<0.001", bold = TRUE),
+        .x < 0.05  ~ cell_spec(as.character(.x), bold = TRUE),
+        TRUE       ~ as.character(.x)
+      )
+    )
+  ) %>%
+  kable(
+    format = "html",
+    escape = FALSE,
+    caption = "Type III Analysis of Variance Table with Satterthwaite's method",
+    
+  ) %>%
+  kable_styling(
+    full_width = FALSE,
+    bootstrap_options = c("striped", "hover", "condensed")
+  ) %>%
+  kableExtra::kable_styling() %>%
+  kableExtra::footnote(
+    general = "Table For Model 2 and Model 3 Disagree"
+  )
+```
+
+
+```{r stop-running, include=FALSE}
+knitr::opts_chunk$set(eval = F)
+```
+
+```{r}
+set.seed(1)
+
+n_timepoint = 50
+n_group = n_timepoint*2
+
+# In this dataset, model2 and model3 do agree
+
+df1_wide <- data.frame(
+  id = rep(1:n_timepoint, 2),
+  group = rep(c("A", "B"), each = n_timepoint)
+) %>%
+  mutate(
+    # Group A baseline mean = 165
+    # Group B baseline mean = 150
+    Baseline = ifelse(
+      group == "A",
+      (rnorm(n_timepoint, mean = 0, sd = 1)*15)+15+150,
+      (rnorm(n_timepoint, mean = 0, sd = 1)*15)+150
+    ),
+    
+    # Final = that person's baseline + random change
+    Final = Baseline + rnorm(n(), mean = 0, sd = 1)*5,
+    
+    change = Final - Baseline
+  )
+
+
+df1 <- df1_wide %>%
+  pivot_longer(
+    cols = c(Baseline, Final),
+    names_to = "timepoint",
+    values_to = "weight"
+  )
+```
+
+```{r, eval=FALSE}
+
+# In this dataset, model2 and model3 do NOT agree
+
+df1_wide <- data.frame(
+  id = rep(1:n_timepoint, 2),
+  group = rep(c("A", "B"), each = n_timepoint)
+) %>%
+  mutate(
+    # Group A baseline mean = 165
+    # Group B baseline mean = 150
+    Baseline = ifelse(
+      group == "A",
+      rnorm(n_timepoint, mean = 70, sd = 6),
+      rnorm(n_timepoint, mean = 80, sd = 6)
+    ),
+    
+    # Final = that person's baseline + random change
+    Final = rnorm(n(), mean = 85, sd = 6),
+    
+    change = Final - Baseline
+  )
+
+
+df1 <- df1_wide %>%
+  pivot_longer(
+    cols = c(Baseline, Final),
+    names_to = "timepoint",
+    values_to = "weight"
+  )
+```
+
+
+```{r}
+library(ggplot2)
+
+ggplot(df1, aes(x = timepoint, y = weight, fill = group)) +
+  stat_summary(fun = mean, geom = "bar", position = "dodge") +
+  coord_cartesian(ylim = c(65, 80))
+  theme_minimal()
+```
+
+
+```{r}
+# Simple T-Test
+
+t.test(df1_wide_disagree$Baseline[df1_wide_disagree$group == "A"], df1_wide_disagree$Final[df1_wide_disagree$group == "A"], paired = T)
+
+t.test(df1_wide_disagree$change[df1_wide_disagree$group == "A"], mu = 0)
+# significant but doesn't take into consideration the timepoints.
+```
+
+```{r}
+# T-Test of the differences
+t.test(df1_wide$change ~ df1_wide$group)
+
+# significant 
+
+```
+
+Assumptions for t-test: 
+
+1. Independent subjects across groups
+- One person in group A should not be correlated with a person in group B.
+
+2. Change scores are approximately normally distributed within each group
+- This does not mean the original outcome at time1 or time2 must each be normal. It is the change score that matters most.
+
+3. Equal variances only if you use the pooled t-test
+- If you use the default Welch t-test in R, equal variances are not required.
+
+4. Outcome is continuous
+- The change score should be roughly quantitative/continuous.
+
+5. No major outliers in the change scores
+- Extreme outliers can distort the mean and the t-test.
+
+```{r}
+#  Paired T-Test
+
+# Group A
+t.test(df1_wide$Baseline[df1_wide$group == "A"], df1_wide$Final[df1_wide$group == "A"], paired = T)
+# Not significant
+
+# Group B
+t.test(df1_wide$Baseline[df1_wide$group == "B"], df1_wide$Final[df1_wide$group == "B"], paired = T)
+# Significant
+
+# these results does not really compare the differences of the timepoints between the 2 groups.
+```
+
+```{r}
+# Linear Mixed Model
+df2 = df1 %>%
+  group_by(group, timepoint) %>%
+  mutate(id = row_number()) %>%
+  ungroup() %>%
+  mutate(group = as.factor(group),
+         timepoint = as.factor(timepoint),
+         id = ifelse(group == "B", id*100, id),
+         id = as.character(id))
+
+library(mmrm)
+lmm_model1 = mmrm(weight ~ group * timepoint + us(timepoint | id), data = df2)
+
+lsmeans1 = lsmeans(lmm_model1, pairwise ~ group * timepoint, adjust = "none")
+
+contrast1 <- list(
+"Diff of Diff" =
+c(1, -1, -1, 1)
+)
+
+contrast_df1 = as.data.frame(lsmeans1$contrasts)
+contrast_df1 = contrast_df1 %>%
+filter(contrast %in% c("A Baseline - B Baseline",
+                       "A Baseline - A Final",
+                       "B Baseline - B Final"))
+
+contrast1.1 <- contrast(lsmeans1, method = contrast1, adjust = "none")
+contrast_df1.1 = as.data.frame(contrast1.1)
+contrast_df1 = rbind(contrast_df1, contrast_df1.1)
+contrast_df1
+```
+
+Assumptions for LMM: 
+
+1. Correct mean structure
+- The model for the mean should be appropriate:
+  - group effect
+  - time effect
+  - group × time interaction
+  
+2. Independence between subjects
+- Different subjects should be independent.
+
+3. Correlation within subjects is handled correctly enough
+- The mixed model accounts for repeated observations within subject through the random effect or covariance structure.
+
+4. Residuals are approximately normal
+- More specifically, the residuals and random effects are often assumed approximately normal for standard inference in linear mixed models.
+
+5. Homoscedasticity of residuals
+- Residual variance should be reasonably similar across fitted values/groups/times unless you model different variances.
+
+6. Outcome is continuous
+- For standard linear mixed models.
+
+7. No extreme influential outliers
+
+```{r}
+shapiro.test(resid(model1))
+```
+
+
+```{r, eval=FALSE}
+mean(df1$weight[df1$timepoint=="Baseline" & df1$group == "A"])
+mean(df1$weight[df1$timepoint=="Baseline" & df1$group == "B"])
+mean(df1$weight[df1$timepoint=="Final" & df1$group == "A"])
+mean(df1$weight[df1$timepoint=="Final" & df1$group == "B"])
+
+mean(df1$weight[df1$group == "A"])
+mean(df1$weight[df1$group == "B"])
+```
+
+# ANCOVA
+
+At the final timepoint, do treatment and control differ after adjusting for baseline difference? -> model2 answers this
+
+```{r}
+model1 = lm(Final ~ group, data = df1_wide)
+model2 = lm(Final ~ Baseline + group, data = df1_wide) # "group" hypothesis is same as model4 in estimate table.
+model3 = lm(change ~ group, data = df1_wide) 
+model4 = lm(change ~ Baseline + group, data = df1_wide) 
+model5 = lm(Final ~ 0 + group + Baseline:group, data = df1_wide)
+
+AIC(lmm_model1)
+AIC(model2)
+AIC(model3)
+AIC(model4)
+AIC(model5)
+
+summary(model2)$coef
+summary(model3)$coef
+summary(model4)$coef
+summary(model5)$coef
+```
+
+What is the relationship among the models 2-4? What do they mean and what are they assuming? For models 2-4, what is the null hypothesis for the group assuming? Which models 1-4 should we use and in what cases?
+
+model1 : answers if there the a difference between the two groups at final
+  - null hypothesis: the two group's means are equal to each other at final
+  - use when only care about final difference between two groups
+
+model2: answers if the two groups differ after adjusting for baseline difference
+  - null hypothesis: the two group's means are equal to each other at final after adjusting for baseline
+  - use when want to compare raw mean changes
+
+model3: answers if the raw change from baseline to final differs between the two groups
+  - use when want to present changes scores
+
+model4: is the same as model2 except the coefficeient for Baseline is 1 less in model4
+ - change = $\beta_0$ + $\beta_1$Baseline + $\beta_2$Group
+ - Final - Baseline = $\beta_0$ + $\beta_1$Baseline + $\beta_2$Group 
+ - Final = $\beta_0$ + $\beta_1$Baseline + Baseline + $\beta_2$Group 
+ - Final = $\beta_0$ + ($\beta_1$ + 1)*Baseline + $\beta_2$Group 
+ - We can see the only difference in model2 and model4 mathematically is the +1
+ - use when baseline differences between the two groups and want to have outcome variable as changes scores
+
+```{r}
+lsmeans2 = lsmeans(model2, pairwise ~ group, adjust = "none")
+summary(lsmeans2)
+```
+
+
+```{r}
+model2_int = lm(Final ~ group * Baseline, data = df1_wide)
+anova(model2, model2_int)
+```

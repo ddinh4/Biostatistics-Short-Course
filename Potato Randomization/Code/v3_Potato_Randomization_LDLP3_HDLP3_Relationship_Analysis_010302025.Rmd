@@ -1,0 +1,1014 @@
+---
+title: "Potato Randomization Analysis"
+author: "Dina Dinh"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+```
+
+```{r}
+library(easypackages)
+library(psych)
+
+libraries("readxl", "dplyr", "mmrm", "table1", "ggplot2", "lmerTest", "psych", "lsmeans", "knitr", "writexl", "car")
+```
+
+# Research Question: Is the relationship between LDL and HDL the same between treatment groups?
+
+```{r}
+trt_randomization_df1 = read_excel("T:/Biostatistics/Aa -- Dinh, Dina/Biostatistics Short Course/Potato Randomization/Data/Potato randomization (5-21-21); Post-Study.xlsx")
+trt_randomization_df2 = trt_randomization_df1 %>%
+  rename(SubjectID = `Ppt. A#'s`,
+         Comments = ...4) %>%
+  filter(!is.na(SubjectID))
+
+df1 = read_excel("T:/Biostatistics/Aa -- Dinh, Dina/Biostatistics Short Course/Potato Randomization/Data/Results from Labcorp with A numbers.xls")
+colnames(df1) <- as.character(df1[4, ])
+df2 = df1[-(1:4),]
+colnames(df2)[3:4] <- c("SubjectID", "Visit")
+
+
+df2 = df2 %>%
+  mutate(#SubjectID = ifelse(SubjectID == "A00-079493", "A00-07-3493", SubjectID),
+         SubjectID = ifelse(SubjectID == "A00-054384", "A00-05-4384", SubjectID),
+         across(
+      c(VLDLCP3, VLCP3, VMP3, VSP3, LDLP3, IDLP3, LLP3, LSP3, HDLP3, HLP3, HMP3, HSP3, VZ3, LZ3, HZ3, 
+         LPIR, ELP_TC, ELP_HDLC, ELP_TG, ELP_APOB, ELP_LDLC, ELP_VLDLC, ELP_NONHDLC),
+      ~ as.numeric(.)  
+    ),
+    Visit = as.factor(Visit))
+```
+
+## Data Cleaning and Summary Statistics
+
+I believe subject "A00-079493" is a typo and should be "A00-07-3493" also "A00-054384" should be "A00-05-4384". However, since it is more evident for subject "A00-05-4384", I will only be adjusting this typo.
+
+```{r}
+df3 = df2 %>%
+  dplyr::select(-Comment) %>%
+  left_join(trt_randomization_df2, by = "SubjectID")
+```
+
+```{r}
+demo_df1 = read_excel("T:/Biostatistics/Aa -- Dinh, Dina/Biostatistics Short Course/Potato Randomization/Data/PREMO Demographics (No PHI) - 2021-05-26 07 51 30.xlsx")
+colnames(demo_df1) <- as.character(demo_df1[9, ])
+demo_df2 = demo_df1[-(1:9),]
+
+demo_df3 = demo_df2 %>%
+  dplyr::select(-ScreeningNbr, -RandomizationNbr)
+```
+
+```{r}
+df4 = demo_df3 %>%
+  left_join(df3, by = "SubjectID")
+```
+
+```{r, eval = F}
+df4 %>%
+  group_by(SubjectID) %>%
+  filter(n() == 1) %>%
+  ungroup()
+
+```
+
+```{r}
+
+
+df5 <- df4 %>%
+  group_by(SubjectID, Visit) %>%
+  filter(`Collection Date` == max(`Collection Date`, na.rm = TRUE)) %>%
+  ungroup()
+
+#df5 %>%
+#  count(SubjectID, Visit) %>%
+#  filter(n > 1)
+
+#write_xlsx(df5, "T:/Biostatistics/Aa -- Dinh, Dina/Biostatistics Short Course/Potato Randomization/Data/v1_Potato_Randomization_Merged_Data_08212025.xlsx")
+
+```
+
+```{r} 
+
+label(df5$VLDLCP3) = "VLDL & Chylomicron Particles (total)"
+label(df5$VLCP3) = "Large VLDL & Chylomicron Particles"
+label(df5$VMP3) = "Medium VLDL Particles"
+label(df5$VSP3) = "Small VLDL Particles"
+units(df5$VLDLCP3) = "nmol/L"
+units(df5$VLCP3) = "nmol/L"
+units(df5$VMP3) = "nmol/L"
+units(df5$VSP3) = "nmol/L"
+
+label(df5$LDLP3) = "LDL Particles (total)"
+label(df5$IDLP3) = "IDL Particles"
+label(df5$LLP3) = "Large LDL Particles"
+label(df5$LSP3) = "Small LDL Particles (total)"
+units(df5$LDLP3) = "nmol/L"
+units(df5$IDLP3) = "nmol/L"
+units(df5$LLP3) = "nmol/L"
+units(df5$LSP3) = "nmol/L"
+
+label(df5$HDLP3) = "HDL Particles (total)"
+label(df5$HLP3) = "Large HDL Particles"
+label(df5$HMP3) = "Medium HDL Particles"
+label(df5$HSP3) = "Small HDL Particles"
+units(df5$HDLP3) = "µmol/L"
+units(df5$HLP3) = "µmol/L"
+units(df5$HMP3) = "µmol/L"
+units(df5$HSP3) = "µmol/L"
+
+label(df5$VZ3) = "VLDL Size"
+label(df5$LZ3) = "LDL Size"
+label(df5$HZ3) = "HDL Size"
+units(df5$VZ3) = "nm"
+units(df5$LZ3) = "nm"
+units(df5$HZ3) = "nm"
+
+label(df5$LPIR) = "Lipoprotein Insulin Resistance Score"
+
+label(df5$ELP_TC) = "Total Cholesterol"
+label(df5$ELP_HDLC) = "HDL Cholesterol"
+label(df5$ELP_TG) = "Triglycerides"
+label(df5$ELP_APOB) = "ApoB"
+label(df5$ELP_LDLC) = "LDL Cholesterol"
+label(df5$ELP_VLDLC) = "VLDL Cholesterol"
+label(df5$ELP_NONHDLC) = "Non HDL Cholesterol"
+units(df5$ELP_TC) = "mg/dL"
+units(df5$ELP_HDLC) = "mg/dL"
+units(df5$ELP_TG) = "mg/dL"
+units(df5$ELP_APOB) = "mg/dL"
+units(df5$ELP_LDLC) = "mg/dL"
+units(df5$ELP_VLDLC) = "mg/dL"
+units(df5$ELP_NONHDLC) = "mg/dL"
+
+table1(~ LDLP3 + HDLP3  | Diet * Visit, data = df5, overall = F)
+```
+
+
+Since our main focus is the LDL and HDL particle relationship between the diet groups, we'll plot those relationships.
+
+
+```{r}
+cor_test_l <- cor.test(df5$LDLP3[df5$Diet == "LMP"], df5$HDLP3[df5$Diet == "LMP"], method = "pearson")
+    r_val_l <- round(cor_test_l$estimate, 3)
+    p_val_l <- signif(cor_test_l$p.value, 3)
+    
+    # Build label
+    label_l <- paste0("r = ", r_val_l, ", p-val = ", p_val_l)
+    
+cor_test_p <- cor.test(df5$LDLP3[df5$Diet == "PLM"], df5$HDLP3[df5$Diet == "PLM"], method = "pearson")
+    r_val_p <- round(cor_test_p$estimate, 3)
+    p_val_p <- signif(cor_test_p$p.value, 3)
+    
+    # Build label
+    label_p <- paste0("r = ", r_val_p, ", p-val = ", p_val_p)
+    
+ggplot(df5, aes(x = HDLP3, y = LDLP3, color = Diet)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between LDL and HDL",
+    subtitle = paste0("LMP: ", label_l, "\nPLM: ", label_p),
+    x = "HDL",
+    y = "LDL"
+  ) +
+  theme_minimal()
+#mean(df3$LDLP3[df3$Diet=="LMP" & df3$Visit == "VISIT 1"])
+```
+
+There seems to be a relationship between LDL and HDL for the PLM diet group but not for the LMP group based on the correlation and p-value. Let's take a look at the correlation of each diet group for each Visit time. 
+
+Again, the relationship between LDL and HDL is more noticeable for the PLM diet group versus LMP group.
+
+```{r}
+ggplot(df5, aes(x = HDLP3, y = LDLP3, color = Diet)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between LDL and HDL by Visit",
+    x = "HDL",
+    y = "LDL"
+  ) +
+  theme_minimal() +
+  facet_wrap(~ Visit)
+```
+
+
+## Linear Mixed Models
+
+Here, we will be using an unstructured covariance model. 
+
+In running the model, I found that subjects "A00-01-2009" and "A00-07-8983" have two visit 1 observations recorded. I will use the most recent Visit 1 observation of those participants.
+
+
+### No Intercept Model
+
+model1 = mmrm(LDLP3 ~ 0 + Diet:Visit + HDLP3:Diet:Visit + us(Visit | SubjectID), data = df5)
+
+```{r}
+
+#model1 = lmer(LZ3 ~ 0 + Diet:Visit + (1 | SubjectID), data = df5)
+
+model1 = mmrm(LDLP3 ~ 0 + Diet:Visit + HDLP3:Diet:Visit + us(Visit | SubjectID), data = df5)
+```
+
+mmrm(LDLP3 ~ Diet + Visit + HDLP3 + Diet:HDLP3 + Visit:HDLP3 + Diet:Visit + HDLP3:Diet:Visit + us(Visit | SubjectID), data = df5)
+
+- This model also have 8 parameters. 8 parameters will be the max output for the solutions table bc there's 4 lines total for each group at each timepoint and there's 2 parameters for each line.
+
+#### Model Summary
+
+```{r}
+paste0("AIC: ", AIC(model1))
+summary(model1)
+```
+
+
+
+```{r}
+model1_slope = data.frame(summary(model1)$coef)[-(1:4),]
+
+model1_slope = model1_slope %>%
+  rename(
+    Std.Error = Std..Error,
+    p.value = Pr...t..
+  )
+rownames(model1_slope) = c("LMP VIST 1", "PLM VIST 1", "LMP VIST 9", "PLM VIST 9")
+```
+
+```{r}
+model1_int = data.frame(summary(model1)$coef)[(1:4),]
+
+model1_int = model1_int %>%
+  rename(
+    Std.Error = Std..Error,
+    p.value = Pr...t..
+  )
+rownames(model1_int) = c("LMP VIST 1", "PLM VIST 1", "LMP VIST 9", "PLM VIST 9")
+```
+
+
+```{r}
+shapiro.test(residuals(model1))
+
+
+summary_resid = psych::describe(residuals(model1))
+
+summary_resid = summary_resid %>%
+  dplyr::select(skew, kurtosis)
+rownames(summary_resid) = NULL
+```
+
+```{r}
+hist(residuals(model1), main = "Histogram of Residuals for LMM", xlab = "residuals")
+```
+
+### Type III Test
+
+```{r}
+Anova(model1, type = "3")
+```
+
+Here, the type III test is testing if 
+
+1. $Diet_L,_9$ = $Diet_P,_9$ = $Diet_L,_1$ = $Diet_P,_1$ = 0 (Intercepts)
+
+2. $Diet_L,_9$ = $Diet_P,_9$ = $Diet_L,_1$ = $Diet_P,_1$ = 0 (Slopes)
+
+
+```{r, eval=FALSE}
+#======Testing Type III Test Results===============
+
+
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0.25, 0.25, -0.25, -0.25, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+type3_test1 <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+```
+
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0.5, 0, 0.5, 0, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+lmp_int1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(lmp_int1_table) <- "LMP"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0.5, 0, 0.5, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+plm_int1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(plm_int1_table) <- "PLM"
+```
+
+```{r}
+model1_int_summary = rbind(lmp_int1_table, plm_int1_table, model1_int)
+
+model1_int_summary2 = model1_int_summary %>%
+  dplyr::select(-df, -t.value, -p.value)
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(-1, 0, 1, 0, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test5.1_base_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test5.1_base_table) <- "LMP: VIST 9-1 Intercept"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, -1, 0, 1, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test6.1_base_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test6.1_base_table) <- "PLM: VIST 9-1 Intercept"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(1, -1, 0, 0, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test1.1_base_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test1.1_base_table) <- "LMP - PLM : VIST 1 Intercept"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 1, -1, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test2.1_base_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test2.1_base_table) <- "LMP - PLM : VIST 9 Intercept"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(1, -1, -1, 1, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test4.1_base_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test4.1_base_table) <- "LMP - PLM : VIST 9-1 Intercept"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0.5, 0.5, -0.5, -0.5, 0, 0, 0, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test3.1_base_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test3.1_base_table) <- "LMP - PLM : Overall"
+```
+
+```{r}
+test_base_result1 = rbind(test3.1_base_table, test5.1_base_table, test6.1_base_table, test1.1_base_table, test2.1_base_table, test4.1_base_table)
+```
+
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 0, 0, 0.5, 0, 0.5, 0)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+lmp_slope1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(lmp_slope1_table) <- "LMP"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 0, 0, 0, 0.5, 0, 0.5)
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+plm_slope1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(plm_slope1_table) <- "PLM"
+```
+
+```{r}
+model1_slope_summary = rbind(lmp_slope1_table, plm_slope1_table, model1_slope)
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 0, 0, -1, 0, 1, 0) 
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test5.1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test5.1_table) <- "LMP : VISIT 9-1 Slope"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 0, 0, 0, -1, 0, 1) 
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test6.1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test6.1_table) <- "PLM : VISIT 9-1 Slope"
+```
+
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 0, 0, 1, -1, 0, 0) 
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test1.1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test1.1_table) <- "LMP - PLM : VISIT 1 Slope"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 0, 0, 0, 0, 1, -1) 
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test2.1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test2.1_table) <- "LMP - PLM : VISIT 9 Slope"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 0, 0, 1, -1, -1, 1) 
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test4.1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test4.1_table) <- "LMP - PLM : VISIT 9-1 Slope"
+```
+
+```{r}
+# Extract coefficient estimates
+coef_estimates <- coef(model1)
+
+# Extract variance-covariance matrix for fixed effects
+vcov_matrix <- vcov(model1)
+
+# Define contrast vector
+K <- c(0, 0, 0, 0, .5, .5, -.5, -.5) 
+
+# Calculate the estimate for the contrast
+estimate <- sum(K * coef_estimates)
+
+# Calculate the variance of the contrast
+var_contrast <- as.numeric(t(K) %*% vcov_matrix %*% K)
+std_error <- sqrt(var_contrast)
+
+# Calculate t-statistic
+t_stat <- estimate / std_error
+
+n_subjects <- length(unique(df5$SubjectID))  # Number of unique subjects
+p <- length(coef(model1))  # Number of fixed effects
+
+# Approximate degrees of freedom
+df <- n_subjects - p
+
+# Calculate two-tailed p-value
+p_value <- 2 * pt(-abs(t_stat), df)
+
+test3.1_table <- data.frame(
+  Estimate = estimate,
+  Std.Error = std_error,
+  df = df,
+  t.value = t_stat,
+  p.value = p_value
+)
+rownames(test3.1_table) <- "LMP - PLM : Overall"
+```
+
+
+```{r}
+test_result1 = rbind(test3.1_table, test5.1_table, test6.1_table, test1.1_table, test2.1_table, test4.1_table)
+```
+
+### Intercept Estimates
+
+```{r}
+kable(model1_int_summary2)
+```
+
+
+### Tests for Intercept
+
+All contrasts are in the format of LMP - PLM.
+
+```{r}
+kable(test_base_result1)
+```
+
+### Slope Estimates
+
+```{r}
+kable(model1_slope_summary)
+```
+
+
+### Tests for Slope
+
+All contrasts are in the format of LMP - PLM.
+
+```{r}
+kable(test_result1)
+```
+
+
+# Results 
+
+The tests show there's no significant baseline difference between the diet groups, so we might not need to do change score analysis.
+
+None of the results show significant differences between the diet groups' LDL and HDL relationship.
+
+**What to show the researcher:**
+
+- Freqency table
+
+- Pre-lim scatterplots and correlations
+
+- Histogram of residuals for normality
+
+- Maybe select tests for intercept and slope

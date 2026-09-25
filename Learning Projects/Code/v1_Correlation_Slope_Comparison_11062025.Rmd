@@ -1,0 +1,374 @@
+---
+title: "Correlation and Slope Comparison"
+author: "Dina Dinh"
+date: "2025-11-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+```
+
+```{r}
+library(easypackages)
+libraries("dplyr", "tidyr", "ggplot2")
+```
+
+# Comparing P-Values
+
+```{r}
+set.seed(1)
+N = 100
+
+# 1.
+d1 = tibble(
+  x = runif(N, 0, 1),
+  y = sin(0.5 * pi * x) + rnorm(N, 0, 3)
+)
+
+# 2.
+d2 = tibble(
+  x = runif(N, -2, 2),
+  y = 1.2 * x + rnorm(N, 0, 0.5)
+)
+
+# 3.
+d3 = tibble(
+  x = c(rnorm(N - 2, 0, 1), 6, 7),
+  y = c(rnorm(N - 2, 0, 1), 10, 14)
+)
+
+# 4.
+d4 = tibble(
+  x = rnorm(N),
+  y = rnorm(N)
+)
+```
+
+## Case 1
+
+```{r}
+cor_test <- cor.test(d1$x, d1$y, method = "pearson")
+    r_val <- round(cor_test$estimate, 3)
+    p_val <- signif(cor_test$p.value, 3)
+    #p_val = ifelse(p_val < 0.001, "p-val < 0.001", paste0("p-val = ", signif(p_val, 3)))
+    
+    # Build label
+    label <- paste0("r = ", r_val, ", p-val = ", p_val)
+    
+fit <- lm(y ~ x, data = d1)
+pval_lm <- paste0("slope p-val = ", signif(summary(fit)$coefficients["x", "Pr(>|t|)"], 3))
+
+#pval_lm <- ifelse(pval_lm < 0.001, "slope p-val < 0.001", paste0("slope p-val = ", signif(pval_lm, 3)))
+
+ggplot(d1, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,           
+    hjust = 1.1, vjust = -0.5,
+    label = pval_lm,
+    size = 4,
+    color = "blue"
+  ) +
+  theme_minimal()
+```
+
+## Case 2
+
+```{r}
+cor_test <- cor.test(d2$x, d2$y, method = "pearson")
+r_val <- round(cor_test$estimate, 3)
+p_val <- signif(cor_test$p.value, 3)
+#p_val = ifelse(p_val < 0.001, "p-val < 0.001", paste0("p-val = ", signif(p_val, 3)))
+
+# Build label
+label <- paste0("r = ", r_val, ", p-val = ", p_val)
+
+fit <- lm(y ~ x, data = d2)
+pval_lm <- paste0("slope p-val = ", signif(summary(fit)$coefficients["x", "Pr(>|t|)"], 3))
+
+#pval_lm <- ifelse(pval_lm < 0.001, "slope p-val < 0.001", paste0("slope p-val = ", signif(pval_lm, 3)))
+
+ggplot(d2, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,           
+    hjust = 1.1, vjust = -0.5,
+    label = pval_lm,
+    size = 4,
+    color = "blue"
+  ) +
+  theme_minimal()
+```
+
+## Case 3
+
+```{r}
+cor_test <- cor.test(d3$x, d3$y, method = "pearson")
+r_val <- round(cor_test$estimate, 3)
+p_val <- signif(cor_test$p.value, 3)
+#p_val = ifelse(p_val < 0.001, "p-val < 0.001", paste0("p-val = ", signif(p_val, 3)))
+
+# Build label
+label <- paste0("r = ", r_val, ", p-val = ", p_val)
+
+fit <- lm(y ~ x, data = d3)
+pval_lm <- paste0("slope p-val = ", signif(summary(fit)$coefficients["x", "Pr(>|t|)"], 3))
+
+#pval_lm <- ifelse(pval_lm < 0.001, "slope p-val < 0.001", paste0("slope p-val = ", signif(pval_lm, 3)))
+
+ggplot(d3, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,           
+    hjust = 1.1, vjust = -0.5,
+    label = pval_lm,
+    size = 4,
+    color = "blue"
+  ) +
+  theme_minimal()
+```
+
+## Case 4
+
+```{r}
+cor_test <- cor.test(d4$x, d4$y, method = "pearson")
+r_val <- round(cor_test$estimate, 3)
+p_val <- signif(cor_test$p.value, 3)
+#p_val = ifelse(p_val < 0.001, "p-val < 0.001", paste0("p-val = ", signif(p_val, 3)))
+
+# Build label
+label <- paste0("r = ", r_val, ", p-val = ", p_val)
+
+fit <- lm(y ~ x, data = d4)
+pval_lm <- paste0("slope p-val = ", signif(summary(fit)$coefficients["x", "Pr(>|t|)"], 3))
+
+#pval_lm <- ifelse(pval_lm < 0.001, "slope p-val < 0.001", paste0("slope p-val = ", signif(pval_lm, 3)))
+
+ggplot(d4, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,           
+    hjust = 1.1, vjust = -0.5,
+    label = pval_lm,
+    size = 4,
+    color = "blue"
+  ) +
+  theme_minimal()
+```
+
+## Result
+
+They produce the exact same p-value because both are testing whether a linear association exists between x and y. The correlation p-val would produce different p-val as slope if we were using a non-linear association test like Spearman.
+
+
+# Comparing Correlation and Slope Values
+
+```{r}
+set.seed(1)
+
+N <- 100
+x <- scale(rnorm(N), center = TRUE, scale = TRUE)  # centered & scaled for stability
+b_target <- 1.5                                     # target slope for A1/A2
+
+# Build a noise vector orthogonal to x so OLS slope is EXACTLY b_target
+z <- rnorm(N)
+u <- as.numeric(z - x * (sum(x * z) / sum(x^2)))   # u ⟂ x  (x'u = 0)
+# sanity check: crossprod(x, u) ~ 0
+
+# ------- Part A: SAME slope, DIFFERENT correlations -------
+# y = b*x + k*u  => OLS slope = b for ANY k because x'u = 0
+k1 <- 0.8
+k2 <- 4.0
+y_A1 <- b_target * x + k1 * u
+y_A2 <- b_target * x + k2 * u
+
+A1 <- data.frame(x = as.numeric(x), y = as.numeric(y_A1))
+A2 <- data.frame(x = as.numeric(x), y = as.numeric(y_A2))
+
+# ------- Part B: SAME correlation, DIFFERENT slopes -------
+# Scaling y by a positive constant changes slope but NOT correlation
+# Start from a clean linear dataset
+y_base <- 0.9 * x + rnorm(N, 0, 0.6)
+B1 <- data.frame(x = as.numeric(x), y = as.numeric(y_base))          # slope ~ 0.9
+B2 <- data.frame(x = as.numeric(x), y = as.numeric(3 * y_base))      # slope ~ 2.7
+# cor(B1$x, B1$y) == cor(B2$x, B2$y) in the sample (up to rounding)
+
+```
+
+## Same Slopes, Different Correlations
+
+```{r}
+cor_test <- cor.test(A1$x, A1$y, method = "pearson")
+r_val <- round(cor_test$estimate, 3)
+p_val <- signif(cor_test$p.value, 3)
+
+# Build label
+label <- paste0("r = ", r_val, ", p-val = ", p_val)
+
+fit <- lm(y ~ x, data = A1)
+pval_lm <- signif(summary(fit)$coefficients["x", "Pr(>|t|)"], 3)
+slope_lm <- signif(summary(fit)$coefficients["x", "Estimate"], 3)
+
+label2 <- paste0("slope = ", slope_lm, ", p-val = ", pval_lm)
+
+ggplot(A1, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,           
+    hjust = 1.1, vjust = -0.5,
+    label = label2,
+    size = 4,
+    color = "blue"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+cor_test <- cor.test(A2$x, A2$y, method = "pearson")
+r_val <- round(cor_test$estimate, 3)
+p_val <- signif(cor_test$p.value, 3)
+
+# Build label
+label <- paste0("r = ", r_val, ", p-val = ", p_val)
+
+fit <- lm(y ~ x, data = A2)
+pval_lm <- signif(summary(fit)$coefficients["x", "Pr(>|t|)"], 3)
+slope_lm <- signif(summary(fit)$coefficients["x", "Estimate"], 3)
+
+label2 <- paste0("slope = ", slope_lm, ", p-val = ", pval_lm)
+
+ggplot(A2, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,           
+    hjust = 1.1, vjust = -0.5,
+    label = label2,
+    size = 4,
+    color = "blue"
+  ) +
+  theme_minimal()
+```
+
+## Same Correlations, Different Slopes
+
+```{r}
+cor_test <- cor.test(B1$x, B1$y, method = "pearson")
+r_val <- round(cor_test$estimate, 3)
+p_val <- signif(cor_test$p.value, 3)
+
+# Build label
+label <- paste0("r = ", r_val, ", p-val = ", p_val)
+
+fit <- lm(y ~ x, data = B1)
+pval_lm <- signif(summary(fit)$coefficients["x", "Pr(>|t|)"], 3)
+slope_lm <- signif(summary(fit)$coefficients["x", "Estimate"], 3)
+
+label2 <- paste0("slope = ", slope_lm, ", p-val = ", pval_lm)
+
+ggplot(B1, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,           
+    hjust = 1.1, vjust = -0.5,
+    label = label2,
+    size = 4,
+    color = "blue"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+cor_test <- cor.test(B2$x, B2$y, method = "pearson")
+r_val <- round(cor_test$estimate, 3)
+p_val <- signif(cor_test$p.value, 3)
+
+# Build label
+label <- paste0("r = ", r_val, ", p-val = ", p_val)
+
+fit <- lm(y ~ x, data = B2)
+pval_lm <- signif(summary(fit)$coefficients["x", "Pr(>|t|)"], 3)
+slope_lm <- signif(summary(fit)$coefficients["x", "Estimate"], 3)
+
+label2 <- paste0("slope = ", slope_lm, ", p-val = ", pval_lm)
+
+ggplot(B2, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship between x and y",
+    subtitle = paste0("Corr: ", label),
+    x = "x",
+    y = "y"
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,           
+    hjust = 1.1, vjust = -0.5,
+    label = label2,
+    size = 4,
+    color = "blue"
+  ) +
+  theme_minimal()
+```
+
+## Result
+
+We can see that the p-val for the correlation and slopes are the same in each case; however the values of the slopes and correlations themselves can change while the other stays constant.
+
